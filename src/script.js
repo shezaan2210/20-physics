@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import GUI from 'lil-gui'
-import CANNON from 'cannon'
+import * as CANNON from 'cannon'
 
 
 /**
@@ -20,7 +20,6 @@ debugObject.createSphere = ()=>{
               z: (Math.random() - .5) * 3
             })
 }
-gui.add(debugObject, 'createSphere')
 
 debugObject.createBox = () =>
 {
@@ -35,7 +34,23 @@ debugObject.createBox = () =>
         }
     )
 }
+debugObject.remove = ()=>{
+for(const object of updateObjects){
+
+    // Remove body
+    object.body.removeEventListener('collide', playHitSound)
+    world.removeBody(object.body)
+
+    // Remove mesh
+    scene.remove(object.mesh )
+}
+updateObjects.splice(0, updateObjects.length)
+}
+gui.add(debugObject, 'createSphere')
 gui.add(debugObject, 'createBox')
+gui.add(debugObject, 'remove')
+
+
 
 /**
  * Base
@@ -46,6 +61,16 @@ const canvas = document.querySelector('canvas.webgl')
 // Scene
 const scene = new THREE.Scene()
 
+// Sounds
+const hitSound = new Audio('/sounds/hit.mp3')
+const playHitSound = (collision)=>{
+    const impactStrength = collision.contact.getImpactVelocityAlongNormal()
+    if(impactStrength > 1.5){
+        hitSound.volume = Math.random()
+        hitSound.currentTime = 0
+        hitSound.play()
+    }
+}
 /**
  * Textures
  */
@@ -64,6 +89,8 @@ const environmentMapTexture = cubeTextureLoader.load([
 // Physics
 // Physics World
 const world = new CANNON.World()
+world.broadphase = new CANNON.SAPBroadphase(world)
+world.allowSleep = true
 world.gravity.set(0, -9.82, 0)
 
 // materials
@@ -246,6 +273,7 @@ const createSphere = (radius, position) =>
         material: defaultMaterial
     })
     body.position.copy(position)
+    body.addEventListener('collide', playHitSound)
     world.addBody(body)
      // Save in objects to update
      updateObjects.push({
@@ -282,6 +310,7 @@ const createBox = (width, height, depth, position) =>
         material: defaultMaterial
     })
     body.position.copy(position)
+    body.addEventListener('collide', playHitSound)
     world.addBody(body)
 
     // Save in objects
